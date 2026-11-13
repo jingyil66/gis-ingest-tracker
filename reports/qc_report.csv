@@ -1,0 +1,5 @@
+dataset_name,feature_count,crs,crs_ok,null_geometry_count,empty_geometry_count,invalid_geometry_count,missing_value_count,duplicate_id_count,missing_required_fields,overall_result
+parks,402,EPSG:26910,True,0,0,2,1,0,,PASSED
+roads,4804,EPSG:26910,True,0,0,0,0,0,,PASSED
+municipal_boundary,1,EPSG:26910,True,0,0,0,0,0,,PASSED
+census_da_population,322,EPSG:26910,True,0,0,0,0,0,,PASSED
