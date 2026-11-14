@@ -19,7 +19,9 @@ The maps were made in QGIS.
 | Municipal boundary | City of Burnaby Open Data | 1 |
 | Census DAs and 2021 population | Statistics Canada DA boundary file and Census Profile API | 322 |
 
-Burnaby’s 2021 population in this extract is 249,125. Acquisition dates, licences, and raw paths are in `sources.md`.
+Burnaby’s 2021 population in this extract is 249,125. Census Dissemination Areas were selected based on whether their representative points fall within the Burnaby municipal boundary. Some selected polygons extend beyond the municipal boundary; spatial coverage calculations use the full selected DA polygons rather than clipping them to the municipal boundary.
+
+Acquisition dates, licences, and raw paths are in `sources.md`.
 
 Contains information licensed under the Open Government Licence – Burnaby. Census data are used under the Statistics Canada Open Licence.
 
@@ -59,6 +61,26 @@ Parks passed with two warnings: two invalid polygons (Bell Park and Powerhouse P
 
 `PASSED` means the quality check had no failing condition. `LOADED` means the layer is in the GeoPackage and can be used. Parks reached `LOADED` with the warning `invalid=2; missing=1` kept in the history message.
 
+## Area measures
+
+Population density and park coverage use different areas on purpose. That difference is not a calculation error. The two measures answer different questions.
+
+Population density uses Statistics Canada’s official land area so that water is not included in the denominator. In the 2021 DA boundary file this is `LANDAREA`, stored as `land_area_km2`, in square kilometres. The 2021 population count is divided by that land area:
+
+```text
+population_density_km2 = population_2021 / land_area_km2
+```
+
+For the whole extract, 249,125 people divided by 90.57 km² of land area gives about 2,751 people per km². The value 4,553 is not this citywide density. It is the median of the 322 DA densities. Dividing 249,125 by 4,553 gives about 54.7, but 54.7 km² is not the land area of these DAs.
+
+Park coverage uses the full DA polygon in EPSG:26910 so that the buffer overlap is the share of that mapped polygon. Both the numerator and the denominator are planar polygon areas in square metres. Water is not removed from either one. The polygons are not clipped to the municipal boundary before this ratio is calculated. `area(DA polygon)` can differ from `land_area_km2`, although for most of these DAs the two are close.
+
+```text
+park_coverage_pct = 100 * area(DA ∩ 400 m park buffer) / area(DA polygon)
+```
+
+`area(DA ∩ 400 m park buffer)` is the field `intersect_area`. A DA with no overlap is treated as 0. The 400-metre buffer is a straight-line distance from the repaired park boundaries.
+
 ## Maps
 
 The QGIS project is `burnaby_park_access.qgz`. Exported pages:
@@ -66,15 +88,17 @@ The QGIS project is `burnaby_park_access.qgz`. Exported pages:
 | File | What it shows |
 |---|---|
 | `population_distribution.pdf` | 2021 population density (people per km²) by DA, with parks |
-| `park_accessibility.pdf` | Percent of each DA’s land area within 400 m of a park |
-| `park_priority.pdf` | DAs that are both relatively dense and less covered |
+| `park_accessibility.pdf` | Percent of each DA polygon inside the 400 m park buffer |
+| `park_priority.pdf` | Screening classes from density and that coverage percent |
 
-Most DAs touch the 400-metre area, so a simple inside-or-outside flag hides the difference. The accessibility map uses the share of each DA’s land inside the buffer. Coverage below 80 percent is treated as lower coverage. Density at or above 4,553 people per km², the median of these 322 DAs, is treated as higher density. **High Priority** means both: density at or above that median, and less than 80 percent of the DA area inside the buffer.
+Most DAs touch the 400-metre area, so a simple inside-or-outside flag hides the difference. The accessibility map uses `park_coverage_pct` above.
+
+The priority map is a preliminary screen. It is not a verified park-service gap and it is not a formal public-service ranking. Higher density means `population_density_km2` at or above 4,553, the median of these 322 DA densities. Lower coverage means `park_coverage_pct` below 80. The class that meets both is labeled **High Screening Priority** in the QGIS project. Re-export `park_priority.pdf` after opening the project so the file matches that label.
 
 ## Limits
 
 The 400-metre distance is a straight line from the park boundary, not a walking route. Rivers, highways, and entrances are not considered.
 
-`park_coverage_pct` is land area, not the share of residents who can reach a park. People may live in the part of a DA that is farther from a park.
+`park_coverage_pct` uses the DA polygon area, not `land_area_km2`, and it is not the share of residents who can reach a park. People may live in the part of a DA that is farther from a park.
 
-High Priority marks areas to look at first. It does not by itself show a proven shortage of park service.
+The screening class marks areas to look at first. It does not show a proven shortage of park service, and it is not a formal ranking of public-service priority.
